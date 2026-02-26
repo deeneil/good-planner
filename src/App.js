@@ -97,7 +97,7 @@ function App() {
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <header className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-[#5A3825]">奶油计划助手</h1>
+          <h1 className="text-3xl font-bold text-[#5A3825]">每日计划助手</h1>
         </header>
 
         {/* Input Form */}
