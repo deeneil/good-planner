@@ -31,8 +31,12 @@ module.exports = async (req, res) => {
     });
   }
 
+  // 从环境变量获取API URL，如果未设置则使用默认值
+  const apiUrl = process.env.API_URL || 'https://yinli.one/v1/chat/completions';
+
   // 记录API密钥长度，用于调试
   console.log('Sending request to API with Key length:', process.env.OPENAI_API_KEY?.length);
+  console.log('Using API URL:', apiUrl);
 
   const systemPrompt = `你是一个高效的计划助手，可以将用户的自然语言计划转换为结构化任务。
 
@@ -47,22 +51,20 @@ module.exports = async (req, res) => {
 
 请只返回一个纯净的JSON数组，不要包含任何Markdown代码块或解释性文字。不要添加任何前缀或后缀，只返回有效的JSON数组。`;
 
-  const apiUrl = 'https://yinli.one/v1/chat/completions';
-
   try {
     const controller = new AbortController();
     // 设置15秒超时
     const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-    // 记录请求URL和模型名称
-    console.log('Request URL:', apiUrl);
+    // 记录模型名称
     console.log('Using model:', 'gemini-1.5-flash');
 
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'X-Channel': 'default'
       },
       body: JSON.stringify({
         model: 'gemini-1.5-flash',
@@ -81,43 +83,6 @@ module.exports = async (req, res) => {
     });
 
     clearTimeout(timeoutId);
-
-    if (response.status === 404) {
-      console.log('404 error, trying alternative URL');
-      // 如果收到404，尝试不带v1的URL
-      const alternativeResponse = await fetch('https://yinli.one/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'gemini-1.5-flash',
-          messages: [
-            {
-              role: 'system',
-              content: systemPrompt
-            },
-            {
-              role: 'user',
-              content: userInput
-            }
-          ]
-        })
-      });
-      
-      const alternativeData = await alternativeResponse.json();
-      
-      if (!alternativeResponse.ok) {
-        console.error('Alternative API Error:', alternativeData);
-        return res.status(alternativeResponse.status).json({ 
-          error: alternativeData.error?.message || '处理您的请求时出错' 
-        });
-      }
-      
-      console.log('Alternative API response received successfully');
-      return res.status(200).json({ result: alternativeData.choices[0].message.content });
-    }
 
     // 获取响应数据
     const data = await response.json();
