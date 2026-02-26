@@ -55,8 +55,26 @@ try {
 const controller = new AbortController();
 // 设置15秒超时
 const timeoutId = setTimeout(() => controller.abort(), 15000);
-// 记录模型名称
-console.log('Using model:', 'gemini-1.5-flash');
+// 记录模型名称和请求格式
+console.log('Using model: gemini-1.5-flash');
+
+// 构建最精简的请求体
+const requestBody = {
+  model: 'gemini-1.5-flash',
+  messages: [
+    {
+      role: 'system',
+      content: systemPrompt
+    },
+    {
+      role: 'user',
+      content: userInput
+    }
+  ],
+  stream: false
+};
+
+console.log('Request body:', JSON.stringify(requestBody));
 
 const response = await fetch(apiUrl, {
   method: 'POST',
@@ -64,19 +82,7 @@ const response = await fetch(apiUrl, {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
   },
-  body: JSON.stringify({
-    model: 'gemini-1.5-flash',
-    messages: [
-      {
-        role: 'system',
-        content: systemPrompt
-      },
-      {
-        role: 'user',
-        content: userInput
-      }
-    ]
-  }),
+  body: JSON.stringify(requestBody),
   signal: controller.signal
 });
 
@@ -88,7 +94,7 @@ const data = await response.json();
 // 检查响应状态
 if (!response.ok) {
   // 完整打印错误信息到日志
-  console.error('API Error - Full Response:', JSON.stringify(data));
+  console.error('Final API Error:', JSON.stringify(data));
   console.error('Status Code:', response.status);
   return res.status(response.status).json({ 
     error: data.error?.message || '处理您的请求时出错',
