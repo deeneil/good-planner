@@ -55,9 +55,6 @@ try {
 const controller = new AbortController();
 // 设置15秒超时
 const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-*.txt
-Plaintext
 // 记录模型名称
 console.log('Using model: gemini-1.5-flash');
 
@@ -114,3 +111,5 @@ if (error.name === 'AbortError') {
 }
 
 return res.status(500).json({ error: '服务器错误，请稍后再试', details: error.message });
+}
+};
