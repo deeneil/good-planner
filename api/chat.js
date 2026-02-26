@@ -56,7 +56,7 @@ module.exports = async (req, res) => {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gemini-1.5-flash',
         messages: [
           {
             role: 'system',
