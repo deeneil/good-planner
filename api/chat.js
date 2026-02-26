@@ -49,7 +49,7 @@ module.exports = async (req, res) => {
     // 设置15秒超时
     const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-    const response = await fetch('https://api.gravity-ai.cn/v1/chat/completions', {
+    const response = await fetch('https://yinli.one/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
