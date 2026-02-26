@@ -31,8 +31,8 @@ module.exports = async (req, res) => {
     });
   }
 
-  // 从环境变量获取API URL，如果未设置则使用默认值
-  const apiUrl = process.env.API_URL || 'https://yinli.one/v1/chat/completions';
+  // 锁定API URL为标准地址
+  const apiUrl = 'https://yinli.one/v1/chat/completions';
 
   // 记录API密钥长度，用于调试
   console.log('Sending request to API with Key length:', process.env.OPENAI_API_KEY?.length);
@@ -63,8 +63,7 @@ module.exports = async (req, res) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        'X-Channel': 'default'
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
         model: 'gemini-1.5-flash',
@@ -89,9 +88,12 @@ module.exports = async (req, res) => {
     
     // 检查响应状态
     if (!response.ok) {
-      console.error('API Error:', data);
+      // 完整打印错误信息到日志
+      console.error('API Error - Full Response:', JSON.stringify(data));
+      console.error('Status Code:', response.status);
       return res.status(response.status).json({ 
-        error: data.error?.message || '处理您的请求时出错' 
+        error: data.error?.message || '处理您的请求时出错',
+        details: data // 将完整错误信息返回给前端
       });
     }
 
@@ -108,6 +110,6 @@ module.exports = async (req, res) => {
       return res.status(504).json({ error: '请求超时，请稍后再试' });
     }
     
-    return res.status(500).json({ error: '服务器错误，请稍后再试' });
+    return res.status(500).json({ error: '服务器错误，请稍后再试', details: error.message });
   }
 };
