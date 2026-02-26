@@ -31,6 +31,9 @@ module.exports = async (req, res) => {
     });
   }
 
+  // 记录API密钥长度，用于调试
+  console.log('Sending request to API with Key length:', process.env.OPENAI_API_KEY?.length);
+
   const systemPrompt = `你是一个高效的计划助手，可以将用户的自然语言计划转换为结构化任务。
 
 将用户消息中的任务提取出来，并格式化为包含以下字段的JSON数组：
@@ -48,6 +51,10 @@ module.exports = async (req, res) => {
     const controller = new AbortController();
     // 设置15秒超时
     const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    // 记录请求URL和模型名称
+    console.log('Request URL:', 'https://yinli.one/v1/chat/completions');
+    console.log('Using model:', 'gemini-1.5-flash');
 
     const response = await fetch('https://yinli.one/v1/chat/completions', {
       method: 'POST',
@@ -84,6 +91,8 @@ module.exports = async (req, res) => {
       });
     }
 
+    console.log('API response received successfully');
+    
     // 成功响应
     return res.status(200).json({ result: data.choices[0].message.content });
     
