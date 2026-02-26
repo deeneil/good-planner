@@ -55,7 +55,10 @@ try {
 const controller = new AbortController();
 // 设置15秒超时
 const timeoutId = setTimeout(() => controller.abort(), 15000);
-// 记录模型名称和请求格式
+
+*.txt
+Plaintext
+// 记录模型名称
 console.log('Using model: gemini-1.5-flash');
 
 // 构建最精简的请求体
@@ -70,11 +73,8 @@ const requestBody = {
       role: 'user',
       content: userInput
     }
-  ],
-  stream: false
+  ]
 };
-
-console.log('Request body:', JSON.stringify(requestBody));
 
 const response = await fetch(apiUrl, {
   method: 'POST',
@@ -94,11 +94,11 @@ const data = await response.json();
 // 检查响应状态
 if (!response.ok) {
   // 完整打印错误信息到日志
-  console.error('Final API Error:', JSON.stringify(data));
+  console.error('API Error - Full Response:', JSON.stringify(data));
   console.error('Status Code:', response.status);
   return res.status(response.status).json({ 
     error: data.error?.message || '处理您的请求时出错',
-    details: data // 将完整错误信息返回给前端
+    details: data
   });
 }
 
@@ -114,5 +114,3 @@ if (error.name === 'AbortError') {
 }
 
 return res.status(500).json({ error: '服务器错误，请稍后再试', details: error.message });
-}
-};
