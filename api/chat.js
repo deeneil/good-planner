@@ -16,7 +16,7 @@ if (req.method !== 'POST') {
 return res.status(405).json({ error: '只允许 POST 请求' });
 }
 
-var userInput = req.body.userInput;
+const userInput = req.body.userInput;
 
 // 输入验证
 if (!userInput || typeof userInput !== 'string') {
@@ -32,7 +32,7 @@ error: '输入文字过长，请将您的计划分成多个小部分提交'
 
 try {
 // 判断是否是更新现有计划的请求
-var isUpdateRequest = userInput.includes('计划有变') ||
+const isUpdateRequest = userInput.includes('计划有变') ||
 userInput.includes('更新计划') ||
 userInput.includes('修改计划') ||
 userInput.includes('plan changed') ||
@@ -42,9 +42,9 @@ userInput.includes('update my plan');
 // 根据输入解析任务
 var tasks = [];
 
-// 首先，通过多种分隔符拆分输入文本 - 修改后的正则表达式
-var subSentences = userInput.split(/[，。！？,.;\n\?？/]+|然后|还有|接着|再/).filter(function(s) {
-  return s && s.trim().length >= 2; // 允许更短的子句也能生成卡片
+// 首先，通过多种分隔符拆分输入文本
+var subSentences = userInput.split(/[。，,.;\n]+|和|然后|还有|\s+/).filter(function(s) {
+  return s && s.trim().length > 2; // 过滤掉太短的子句
 });
 
 // 如果无法拆分出有意义的子句，将整个输入作为一个子句
@@ -63,7 +63,6 @@ for (var i = 0; i < subSentences.length; i++) {
   
   // 清洗标题文本
   var title = cleanTaskTitle(remainingText, deadline);
-  var description = subSentence;
   
   // 如果标题太短或无意义，跳过此子句
   if (title.length < 2) continue;
@@ -72,6 +71,8 @@ for (var i = 0; i < subSentences.length; i++) {
   if (title.length > 50) {
     description = title;
     title = title.substring(0, 47) + "...";
+  } else {
+    description = subSentence;
   }
   
   // 生成唯一ID
@@ -106,7 +107,7 @@ if (tasks.length === 0) {
 }
 
 // 如果是更新请求，则返回解析的任务替换现有任务
-return res.status(200).json({ result: tasks });
+return res.status(200).json({ result: JSON.stringify(tasks) });
 } catch (error) {
 console.error('解析错误:', error);
 return res.status(500).json({ error: '处理您的请求时出错', details: error.message });
@@ -173,6 +174,7 @@ timeValue = pattern.match(matches);
 timeValue = pattern.value;
 }
 
+
 if (dateFound) {
     deadline = deadline + " " + timeValue;
   } else {
@@ -189,19 +191,16 @@ remainingText = remainingText.replace(/\s+/g, " ").trim();
 return { deadline: deadline, remainingText: remainingText };
 }
 
-// 清洗任务标题，移除干扰词 - 增强版
+// 清洗任务标题，移除干扰词 - 增加更多干扰词过滤
 function cleanTaskTitle(text, deadline) {
 var cleanedText = text;
 
-// 移除更全面的干扰词 - 增加了更多连接词和语气词
+// 移除更全面的干扰词
 var wordsToRemove = [
 '我要', '我想', '我需要', '我打算', '我准备',
 '要', '想', '去', '准备', '打算', '需要',
 '帮我', '请', '麻烦', '希望', '计划', '安排',
-'一下', '做一个', '做', '一个',
-'然后', '还有', '接着', '再',
-'的话', '咯', '吧', '呢', '啊', '哦', '呀',
-'先', '完成', '开始', '继续'
+'一下', '做一个', '做', '一个'
 ];
 
 for (var i = 0; i < wordsToRemove.length; i++) {
@@ -217,6 +216,7 @@ var timeWords = [
 '星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日',
 '上午', '中午', '下午', '晚上', '凌晨', '早上'
 ];
+
 
 for (var i = 0; i < timeWords.length; i++) {
   var word = timeWords[i];
