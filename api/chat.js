@@ -1,7 +1,7 @@
 // api/chat.js
 var parser = require('./_utils/parser.js');
 
-module.exports = async (req, res) => {
+module.exports = function(req, res) {
 // 设置 CORS 头，以允许跨域请求
 res.setHeader('Access-Control-Allow-Credentials', true);
 res.setHeader('Access-Control-Allow-Origin', '*');
