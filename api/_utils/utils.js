@@ -59,7 +59,8 @@ timeValue = pattern.match(matches);
 } else {
 timeValue = pattern.value;
 }
-if (dateFound) {
+
+    if (dateFound) {
     deadline = deadline + " " + timeValue;
   } else {
     deadline = timeValue;
