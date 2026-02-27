@@ -1,5 +1,5 @@
 // api/parser.js
-var utils = require('./utils');
+var utils = require('./utils.js');
 
 /**
 
