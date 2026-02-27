@@ -1,4 +1,3 @@
-// api/chat.js
 var parser = require('./_utils/parser.js');
 
 module.exports = function(req, res) {
@@ -36,7 +35,7 @@ error: '输入文字过长，请将您的计划分成多个小部分提交'
 try {
 // 调用parser模块解析用户输入
 var tasks = parser.parseInputToTasks(userInput);
-// 返回解析结果
+  // 返回解析结果
 return res.status(200).json({ result: tasks });
 } catch (error) {
 console.error('解析错误:', error);
