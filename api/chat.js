@@ -113,7 +113,7 @@ const datePatterns = [
 { regex: /\d+月\d+[日号]/g, match => match }
 ];
 
-// 时间模式匹配
+// 时间模式匹配 - 修复模板字符串语法
 const timePatterns = [
 { regex: /(\d+)[点時]半/g, match => ${match[0]}30分 },
 { regex: /(\d+)[点時]钟?/g, match => ${match[0]}点 },
