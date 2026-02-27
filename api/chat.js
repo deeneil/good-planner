@@ -41,18 +41,23 @@ userInput.includes('update my plan');
 let tasks = [];
 
 // 拆分不同的任务（按句号、逗号、分号或换行符分割）
-const sentences = userInput.split(/[。，,.;\n]+/).filter(s => s.trim().length > 0);
+const sentences = userInput.split(/[。，,.;\n]+/).filter(function(s) {
+  return s.trim().length > 0;
+});
 
-for (const sentence of sentences) {
+for (var i = 0; i < sentences.length; i++) {
+  var sentence = sentences[i];
   // 如果句子太短，可能不是有效任务
   if (sentence.trim().length < 2) continue;
   
   // 提取时间和日期信息
-  const { deadline, remainingText } = extractTimeInfo(sentence);
+  var extractedInfo = extractTimeInfo(sentence);
+  var deadline = extractedInfo.deadline;
+  var remainingText = extractedInfo.remainingText;
   
   // 清洗标题文本
-  let title = cleanTaskTitle(remainingText, deadline);
-  let description = sentence;
+  var title = cleanTaskTitle(remainingText, deadline);
+  var description = sentence;
   
   // 如果标题太长，截取部分
   if (title.length > 50) {
@@ -60,27 +65,27 @@ for (const sentence of sentences) {
   }
   
   // 生成唯一ID
-  const id = `task_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+  var id = "task_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
   
   tasks.push({
-    id,
-    title,
-    description,
-    deadline,
+    id: id,
+    title: title,
+    description: description,
+    deadline: deadline,
     status: "pending"
   });
 }
 
 // 如果没有提取到任务，创建一个基本任务
 if (tasks.length === 0) {
-  const { deadline, remainingText } = extractTimeInfo(userInput);
-  const title = cleanTaskTitle(remainingText, deadline);
+  var extractedInfo = extractTimeInfo(userInput);
+  var title = cleanTaskTitle(extractedInfo.remainingText, extractedInfo.deadline);
   
   tasks.push({
-    id: `task_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    id: "task_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
     title: title.length > 50 ? title.substring(0, 47) + "..." : title,
     description: userInput,
-    deadline,
+    deadline: extractedInfo.deadline,
     status: "pending"
   });
 }
@@ -95,11 +100,11 @@ return res.status(500).json({ error: '处理您的请求时出错', details: err
 
 // 提取时间信息的辅助函数
 function extractTimeInfo(text) {
-let deadline = "待定";
-let remainingText = text;
+var deadline = "待定";
+var remainingText = text;
 
 // 日期模式匹配
-const datePatterns = [
+var datePatterns = [
 { regex: /今天/g, value: "今天" },
 { regex: /明天/g, value: "明天" },
 { regex: /后天/g, value: "后天" },
@@ -109,15 +114,14 @@ const datePatterns = [
 { regex: /周四|星期四/g, value: "下个星期四" },
 { regex: /周五|星期五/g, value: "下个星期五" },
 { regex: /周六|星期六/g, value: "下个星期六" },
-{ regex: /周日|星期日|周天|星期天/g, value: "下个星期日" },
-{ regex: /\d+月\d+[日号]/g, match => match }
+{ regex: /周日|星期日|周天|星期天/g, value: "下个星期日" }
 ];
 
-// 时间模式匹配 - 修复模板字符串语法
-const timePatterns = [
-{ regex: /(\d+)[点時]半/g, match => ${match[0]}30分 },
-{ regex: /(\d+)[点時]钟?/g, match => ${match[0]}点 },
-{ regex: /(\d+)点時分/g, match => match[0] },
+// 时间模式匹配 - 不使用模板字符串
+var timePatterns = [
+{ regex: /(\d+)[点時]半/g, match: function(m) { return m[0] + "30分"; } },
+{ regex: /(\d+)[点時]钟?/g, match: function(m) { return m[0] + "点"; } },
+{ regex: /(\d+)点時分/g, match: function(m) { return m[0]; } },
 { regex: /上午/g, value: "上午" },
 { regex: /中午/g, value: "中午" },
 { regex: /下午/g, value: "下午" },
@@ -127,12 +131,13 @@ const timePatterns = [
 ];
 
 // 匹配日期
-let dateFound = false;
-for (const pattern of datePatterns) {
-const matches = [...text.matchAll(pattern.regex)];
-if (matches.length > 0) {
-const match = matches[0][0];
-const dateValue = typeof pattern.value === 'function' ? pattern.value(match) : pattern.value;
+var dateFound = false;
+for (var i = 0; i < datePatterns.length; i++) {
+var pattern = datePatterns[i];
+var matches = text.match(pattern.regex);
+if (matches && matches.length > 0) {
+var match = matches[0];
+var dateValue = pattern.value;
 deadline = dateValue;
 dateFound = true;
 remainingText = remainingText.replace(match, " ");
@@ -140,14 +145,20 @@ remainingText = remainingText.replace(match, " ");
 }
 
 // 匹配时间
-let timeFound = false;
-for (const pattern of timePatterns) {
-const matches = [...text.matchAll(pattern.regex)];
-if (matches.length > 0) {
-const match = matches[0][0];
-const timeValue = typeof pattern.value === 'function' ? pattern.value(matches[0]) : pattern.value;
+var timeFound = false;
+for (var i = 0; i < timePatterns.length; i++) {
+var pattern = timePatterns[i];
+var matches = text.match(pattern.regex);
+if (matches && matches.length > 0) {
+var match = matches[0];
+var timeValue;
+if (pattern.match) {
+timeValue = pattern.match(matches);
+} else {
+timeValue = pattern.value;
+}
 if (dateFound) {
-    deadline += ` ${timeValue}`;
+    deadline = deadline + " " + timeValue;
   } else {
     deadline = timeValue;
   }
@@ -156,72 +167,30 @@ if (dateFound) {
 }
 }
 
-// 尝试找到带期限的短语
-const deadlinePatterns = [
-{ regex: /截止到([\s\S]+)/g, group: 1 },
-{ regex: /期限是([\s\S]+)/g, group: 1 },
-{ regex: /deadline是为:：/gi, group: 1 }
-];
-
-for (const pattern of deadlinePatterns) {
-const matches = [...text.matchAll(pattern.regex)];
-if (matches.length > 0 && matches[0][pattern.group]) {
-// 提取截止日期的描述
-const deadlineText = matches[0][pattern.group].trim();
-if (deadlineText && deadlineText.length < 20) { // 避免太长的匹配
-deadline = deadlineText;
-remainingText = remainingText.replace(matches[0][0], " ");
-}
-}
-}
-
 // 清理文本中的多余空格
 remainingText = remainingText.replace(/\s+/g, " ").trim();
 
-return { deadline, remainingText };
+return { deadline: deadline, remainingText: remainingText };
 }
 
-// 清洗任务标题，移除干扰词
+// 清洗任务标题，移除干扰词 - 极简版
 function cleanTaskTitle(text, deadline) {
-let cleanedText = text;
+var cleanedText = text;
 
-// 移除干扰词
-const wordsToRemove = [
-'我要', '我想', '我需要', '我打算', '我准备',
-'要', '想', '去', '准备', '打算', '做一个', '一下', '需要',
-'帮我', '请', '麻烦', '希望', '计划', '安排'
-];
-
-for (const word of wordsToRemove) {
-cleanedText = cleanedText.replace(new RegExp(word, 'g'), ' ');
-}
-
-// 确保已经提取到deadline的时间词不会出现在标题中
-if (deadline !== "待定") {
-const timeWords = [
-'今天', '明天', '后天',
-'周一', '周二', '周三', '周四', '周五', '周六', '周日', '周天',
-'星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日', '星期天',
-'上午', '中午', '下午', '晚上', '凌晨', '早上',
-'点钟', '点半'
-];
-for (const word of timeWords) {
-  cleanedText = cleanedText.replace(new RegExp(word, 'g'), ' ');
-}
-
-// 移除数字+点/时
-cleanedText = cleanedText.replace(/\d+[点時](\d+分)?/g, ' ');
-}
+// 移除干扰词 - 只保留最核心的几个
+cleanedText = cleanedText.replace(/我要/g, " ");
+cleanedText = cleanedText.replace(/我想/g, " ");
+cleanedText = cleanedText.replace(/去/g, " ");
+cleanedText = cleanedText.replace(/准备/g, " ");
+cleanedText = cleanedText.replace(/打算/g, " ");
+cleanedText = cleanedText.replace(/需要/g, " ");
 
 // 清理多余空格并修剪
-cleanedText = cleanedText.replace(/\s+/g, ' ').trim();
+cleanedText = cleanedText.replace(/\s+/g, " ").trim();
 
-// 如果清理后文本为空，返回原文本的一部分
+// 如果清理后文本为空，返回原文本
 if (!cleanedText || cleanedText.length < 2) {
 cleanedText = text.trim();
-if (cleanedText.length > 30) {
-cleanedText = cleanedText.substring(0, 30);
-}
 }
 
 return cleanedText;
