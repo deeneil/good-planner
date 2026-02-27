@@ -1,4 +1,3 @@
-// api/_utils/parser.js
 var utils = require('./utils.js');
 
 /**
@@ -29,7 +28,7 @@ subSentences = [userInput];
 // 再进行时间和任务提取
 for (var i = 0; i < subSentences.length; i++) {
 var subSentence = subSentences[i];
-// 提取时间和日期信息
+  // 提取时间和日期信息
 var extractedInfo = utils.extractTimeInfo(subSentence);
 var deadline = extractedInfo.deadline;
 var remainingText = extractedInfo.remainingText;
@@ -63,7 +62,7 @@ tasks.push({
 if (tasks.length === 0) {
 var extractedInfo = utils.extractTimeInfo(userInput);
 var title = utils.cleanTaskTitle(extractedInfo.remainingText, extractedInfo.deadline);
-// 确保标题不为空
+  // 确保标题不为空
 if (!title || title.trim().length === 0) {
   title = userInput.length > 30 ? userInput.substring(0, 30) + "..." : userInput;
 }
