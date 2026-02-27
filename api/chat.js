@@ -1,5 +1,3 @@
-api/chat.js:
-
 // api/chat.js
 var parser = require('./_utils/parser.js');
 
