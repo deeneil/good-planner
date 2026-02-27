@@ -130,4 +130,3 @@ module.exports = {
 extractTimeInfo: extractTimeInfo,
 cleanTaskTitle: cleanTaskTitle
 };
-
