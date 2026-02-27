@@ -30,109 +30,199 @@ error: '输入文字过长，请将您的计划分成多个小部分提交'
 });
 }
 
-const apiUrl = 'https://yinli.one/v1/chat/completions';
-
-const systemPrompt = `你是一个高效的计划助手，可以将用户的自然语言计划转换为结构化任务。
-将用户消息中的任务提取出来，并格式化为包含以下字段的JSON数组：
-
-id: 唯一字符串ID（使用当前时间戳+随机字符）
-title: 清晰简洁的任务标题（最多50个字符）
-description: 可选的详细描述
-deadline: 当任务应当完成的时间（可以是具体日期或相对时间）
-status: 新任务始终设为"pending"
-如果用户正在修改现有计划（消息中包含"计划有变"、"更新计划"等短语），请审核他们的更改并提供一个应该替换当前计划的更新JSON数组。
-请只返回一个纯净的JSON数组，不要包含任何Markdown代码块或解释性文字，不要添加任何前缀或后缀。`;
 try {
-// 主逻辑：尝试使用AI接口解析
-console.log('尝试使用API解析任务');
-const controller = new AbortController();
-const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+// 判断是否是更新现有计划的请求
+const isUpdateRequest = userInput.includes('计划有变') ||
+userInput.includes('更新计划') ||
+userInput.includes('修改计划') ||
+userInput.includes('plan changed') ||
+userInput.includes('update my plan');
+// 根据输入解析任务
+let tasks = [];
 
-const response = await fetch(apiUrl, {
-method: 'POST',
-headers: {
-'Content-Type': 'application/json',
-'Authorization': Bearer ${process.env.OPENAI_API_KEY}
-},
-body: JSON.stringify({
-model: 'gemini-1.5-flash',
-messages: [
-{
-role: 'system',
-content: systemPrompt
-},
-{
-role: 'user',
-content: userInput
-}
-]
-}),
-signal: controller.signal
-});
+// 拆分不同的任务（按句号、逗号、分号或换行符分割）
+const sentences = userInput.split(/[。，,.;\n]+/).filter(s => s.trim().length > 0);
 
-clearTimeout(timeoutId);
-
-// 如果API响应成功
-if (response.ok) {
-const data = await response.json();
-console.log('API解析成功');
-return res.status(200).json({ result: data.choices[0].message.content });
-} else {
-// API响应失败，切换到本地解析
-console.log('API响应失败，状态码:', response.status);
-throw new Error(API响应错误: ${response.status});
-}
-} catch (error) {
-// 退路逻辑：本地解析模式
-console.log('切换到本地解析模式:', error.message);
-
-try {
-// 极简逻辑处理
-let deadline = '待定';
-if (userInput.includes('今天')) {
-deadline = '今天';
-} else if (userInput.includes('明天')) {
-deadline = '明天';
-} else if (userInput.includes('后天')) {
-deadline = '后天';
-}
-// 添加时间信息
-if (userInput.includes('上午')) {
-  deadline += ' 上午';
-} else if (userInput.includes('下午')) {
-  deadline += ' 下午';
-} else if (userInput.includes('晚上')) {
-  deadline += ' 晚上';
+for (const sentence of sentences) {
+  // 如果句子太短，可能不是有效任务
+  if (sentence.trim().length < 2) continue;
+  
+  // 提取时间和日期信息
+  const { deadline, remainingText } = extractTimeInfo(sentence);
+  
+  // 清洗标题文本
+  let title = cleanTaskTitle(remainingText, deadline);
+  let description = sentence;
+  
+  // 如果标题太长，截取部分
+  if (title.length > 50) {
+    title = title.substring(0, 47) + "...";
+  }
+  
+  // 生成唯一ID
+  const id = `task_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+  
+  tasks.push({
+    id,
+    title,
+    description,
+    deadline,
+    status: "pending"
+  });
 }
 
-// 提取小时信息
-const hourMatch = userInput.match(/(\d+)[点時]/);
-if (hourMatch) {
-  deadline += ` ${hourMatch[0]}`;
+// 如果没有提取到任务，创建一个基本任务
+if (tasks.length === 0) {
+  const { deadline, remainingText } = extractTimeInfo(userInput);
+  const title = cleanTaskTitle(remainingText, deadline);
+  
+  tasks.push({
+    id: `task_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    title: title.length > 50 ? title.substring(0, 47) + "..." : title,
+    description: userInput,
+    deadline,
+    status: "pending"
+  });
 }
 
-// 生成唯一ID
-const id = `task_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-
-// 提取标题（前30个字符，避免太短）
-const title = userInput.length > 30 ? userInput.substring(0, 30) + '...' : userInput;
-
-const tasks = [{
-  id,
-  title,
-  description: userInput,
-  deadline,
-  status: "pending"
-}];
-
-console.log('本地解析成功');
+// 如果是更新请求，则返回解析的任务替换现有任务
 return res.status(200).json({ result: JSON.stringify(tasks) });
-} catch (backupError) {
-console.error('本地解析也失败了:', backupError);
-return res.status(500).json({
-error: '处理您的请求时出错',
-details: backupError.message
-});
-}
+} catch (error) {
+console.error('解析错误:', error);
+return res.status(500).json({ error: '处理您的请求时出错', details: error.message });
 }
 };
+
+// 提取时间信息的辅助函数
+function extractTimeInfo(text) {
+let deadline = "待定";
+let remainingText = text;
+
+// 日期模式匹配
+const datePatterns = [
+{ regex: /今天/g, value: "今天" },
+{ regex: /明天/g, value: "明天" },
+{ regex: /后天/g, value: "后天" },
+{ regex: /周一|星期一/g, value: "下个星期一" },
+{ regex: /周二|星期二/g, value: "下个星期二" },
+{ regex: /周三|星期三/g, value: "下个星期三" },
+{ regex: /周四|星期四/g, value: "下个星期四" },
+{ regex: /周五|星期五/g, value: "下个星期五" },
+{ regex: /周六|星期六/g, value: "下个星期六" },
+{ regex: /周日|星期日|周天|星期天/g, value: "下个星期日" },
+{ regex: /\d+月\d+[日号]/g, match => match }
+];
+
+// 时间模式匹配
+const timePatterns = [
+{ regex: /(\d+)[点時]半/g, match => ${match[0]}30分 },
+{ regex: /(\d+)[点時]钟?/g, match => ${match[0]}点 },
+{ regex: /(\d+)点時分/g, match => match[0] },
+{ regex: /上午/g, value: "上午" },
+{ regex: /中午/g, value: "中午" },
+{ regex: /下午/g, value: "下午" },
+{ regex: /晚上/g, value: "晚上" },
+{ regex: /早上/g, value: "早上" },
+{ regex: /凌晨/g, value: "凌晨" }
+];
+
+// 匹配日期
+let dateFound = false;
+for (const pattern of datePatterns) {
+const matches = [...text.matchAll(pattern.regex)];
+if (matches.length > 0) {
+const match = matches[0][0];
+const dateValue = typeof pattern.value === 'function' ? pattern.value(match) : pattern.value;
+deadline = dateValue;
+dateFound = true;
+remainingText = remainingText.replace(match, " ");
+}
+}
+
+// 匹配时间
+let timeFound = false;
+for (const pattern of timePatterns) {
+const matches = [...text.matchAll(pattern.regex)];
+if (matches.length > 0) {
+const match = matches[0][0];
+const timeValue = typeof pattern.value === 'function' ? pattern.value(matches[0]) : pattern.value;
+if (dateFound) {
+    deadline += ` ${timeValue}`;
+  } else {
+    deadline = timeValue;
+  }
+  timeFound = true;
+  remainingText = remainingText.replace(match, " ");
+}
+}
+
+// 尝试找到带期限的短语
+const deadlinePatterns = [
+{ regex: /截止到([\s\S]+)/g, group: 1 },
+{ regex: /期限是([\s\S]+)/g, group: 1 },
+{ regex: /deadline是为:：/gi, group: 1 }
+];
+
+for (const pattern of deadlinePatterns) {
+const matches = [...text.matchAll(pattern.regex)];
+if (matches.length > 0 && matches[0][pattern.group]) {
+// 提取截止日期的描述
+const deadlineText = matches[0][pattern.group].trim();
+if (deadlineText && deadlineText.length < 20) { // 避免太长的匹配
+deadline = deadlineText;
+remainingText = remainingText.replace(matches[0][0], " ");
+}
+}
+}
+
+// 清理文本中的多余空格
+remainingText = remainingText.replace(/\s+/g, " ").trim();
+
+return { deadline, remainingText };
+}
+
+// 清洗任务标题，移除干扰词
+function cleanTaskTitle(text, deadline) {
+let cleanedText = text;
+
+// 移除干扰词
+const wordsToRemove = [
+'我要', '我想', '我需要', '我打算', '我准备',
+'要', '想', '去', '准备', '打算', '做一个', '一下', '需要',
+'帮我', '请', '麻烦', '希望', '计划', '安排'
+];
+
+for (const word of wordsToRemove) {
+cleanedText = cleanedText.replace(new RegExp(word, 'g'), ' ');
+}
+
+// 确保已经提取到deadline的时间词不会出现在标题中
+if (deadline !== "待定") {
+const timeWords = [
+'今天', '明天', '后天',
+'周一', '周二', '周三', '周四', '周五', '周六', '周日', '周天',
+'星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日', '星期天',
+'上午', '中午', '下午', '晚上', '凌晨', '早上',
+'点钟', '点半'
+];
+for (const word of timeWords) {
+  cleanedText = cleanedText.replace(new RegExp(word, 'g'), ' ');
+}
+
+// 移除数字+点/时
+cleanedText = cleanedText.replace(/\d+[点時](\d+分)?/g, ' ');
+}
+
+// 清理多余空格并修剪
+cleanedText = cleanedText.replace(/\s+/g, ' ').trim();
+
+// 如果清理后文本为空，返回原文本的一部分
+if (!cleanedText || cleanedText.length < 2) {
+cleanedText = text.trim();
+if (cleanedText.length > 30) {
+cleanedText = cleanedText.substring(0, 30);
+}
+}
+
+return cleanedText;
+}
