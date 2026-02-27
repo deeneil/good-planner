@@ -1,5 +1,3 @@
-// api/_utils/utils.js
-
 // 提取时间信息的辅助函数
 function extractTimeInfo(text) {
 var deadline = "待定";
@@ -59,7 +57,6 @@ timeValue = pattern.match(matches);
 } else {
 timeValue = pattern.value;
 }
-
     if (dateFound) {
     deadline = deadline + " " + timeValue;
   } else {
@@ -104,7 +101,7 @@ var timeWords = [
 '星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日',
 '上午', '中午', '下午', '晚上', '凌晨', '早上'
 ];
-for (var i = 0; i < timeWords.length; i++) {
+    for (var i = 0; i < timeWords.length; i++) {
   var word = timeWords[i];
   cleanedText = cleanedText.replace(new RegExp(word, 'g'), " ");
 }
