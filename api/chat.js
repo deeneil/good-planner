@@ -38,34 +38,43 @@ userInput.includes('修改计划') ||
 userInput.includes('plan changed') ||
 userInput.includes('update my plan');
 // 根据输入解析任务
-let tasks = [];
+var tasks = [];
 
-// 拆分不同的任务（按句号、逗号、分号或换行符分割）
-const sentences = userInput.split(/[。，,.;\n]+/).filter(function(s) {
-  return s.trim().length > 0;
+// 首先，通过多种分隔符拆分输入文本
+var subSentences = userInput.split(/[。，,.;\n]+|和|然后|还有|\s+/).filter(function(s) {
+  return s && s.trim().length > 2; // 过滤掉太短的子句
 });
 
-for (var i = 0; i < sentences.length; i++) {
-  var sentence = sentences[i];
-  // 如果句子太短，可能不是有效任务
-  if (sentence.trim().length < 2) continue;
+// 如果无法拆分出有意义的子句，将整个输入作为一个子句
+if (subSentences.length === 0) {
+  subSentences = [userInput];
+}
+
+// 再进行时间和任务提取
+for (var i = 0; i < subSentences.length; i++) {
+  var subSentence = subSentences[i];
   
   // 提取时间和日期信息
-  var extractedInfo = extractTimeInfo(sentence);
+  var extractedInfo = extractTimeInfo(subSentence);
   var deadline = extractedInfo.deadline;
   var remainingText = extractedInfo.remainingText;
   
   // 清洗标题文本
   var title = cleanTaskTitle(remainingText, deadline);
-  var description = sentence;
+  
+  // 如果标题太短或无意义，跳过此子句
+  if (title.length < 2) continue;
   
   // 如果标题太长，截取部分
   if (title.length > 50) {
+    description = title;
     title = title.substring(0, 47) + "...";
+  } else {
+    description = subSentence;
   }
   
   // 生成唯一ID
-  var id = "task_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+  var id = "task_" + Date.now() + "_" + Math.floor(Math.random() * 1000) + "_" + i;
   
   tasks.push({
     id: id,
@@ -81,9 +90,14 @@ if (tasks.length === 0) {
   var extractedInfo = extractTimeInfo(userInput);
   var title = cleanTaskTitle(extractedInfo.remainingText, extractedInfo.deadline);
   
+  // 确保标题不为空
+  if (!title || title.trim().length === 0) {
+    title = userInput.length > 30 ? userInput.substring(0, 30) + "..." : userInput;
+  }
+  
   tasks.push({
     id: "task_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
-    title: title.length > 50 ? title.substring(0, 47) + "..." : title,
+    title: title,
     description: userInput,
     deadline: extractedInfo.deadline,
     status: "pending"
@@ -120,7 +134,7 @@ var datePatterns = [
 // 时间模式匹配 - 不使用模板字符串
 var timePatterns = [
 { regex: /(\d+)[点時]半/g, match: function(m) { return m[0] + "30分"; } },
-{ regex: /(\d+)[点時]钟?/g, match: function(m) { return m[0] + "点"; } },
+{ regex: /(\d+)[点時]钟?/g, match: function(m) { return m[0]; } },
 { regex: /(\d+)点時分/g, match: function(m) { return m[0]; } },
 { regex: /上午/g, value: "上午" },
 { regex: /中午/g, value: "中午" },
@@ -173,24 +187,49 @@ remainingText = remainingText.replace(/\s+/g, " ").trim();
 return { deadline: deadline, remainingText: remainingText };
 }
 
-// 清洗任务标题，移除干扰词 - 极简版
+// 清洗任务标题，移除干扰词 - 增加更多干扰词过滤
 function cleanTaskTitle(text, deadline) {
 var cleanedText = text;
 
-// 移除干扰词 - 只保留最核心的几个
-cleanedText = cleanedText.replace(/我要/g, " ");
-cleanedText = cleanedText.replace(/我想/g, " ");
-cleanedText = cleanedText.replace(/去/g, " ");
-cleanedText = cleanedText.replace(/准备/g, " ");
-cleanedText = cleanedText.replace(/打算/g, " ");
-cleanedText = cleanedText.replace(/需要/g, " ");
+// 移除更全面的干扰词
+var wordsToRemove = [
+'我要', '我想', '我需要', '我打算', '我准备',
+'要', '想', '去', '准备', '打算', '需要',
+'帮我', '请', '麻烦', '希望', '计划', '安排',
+'一下', '做一个', '做', '一个'
+];
+
+for (var i = 0; i < wordsToRemove.length; i++) {
+var word = wordsToRemove[i];
+cleanedText = cleanedText.replace(new RegExp(word, 'g'), " ");
+}
+
+// 过滤掉可能在标题中出现的时间词汇
+if (deadline !== "待定") {
+var timeWords = [
+'今天', '明天', '后天',
+'周一', '周二', '周三', '周四', '周五', '周六', '周日',
+'星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日',
+'上午', '中午', '下午', '晚上', '凌晨', '早上'
+];
+for (var i = 0; i < timeWords.length; i++) {
+  var word = timeWords[i];
+  cleanedText = cleanedText.replace(new RegExp(word, 'g'), " ");
+}
+
+// 移除数字+点/时
+cleanedText = cleanedText.replace(/\d+[点時](\d+分)?/g, " ");
+}
 
 // 清理多余空格并修剪
 cleanedText = cleanedText.replace(/\s+/g, " ").trim();
 
-// 如果清理后文本为空，返回原文本
+// 如果清理后文本为空，返回原文本的一部分
 if (!cleanedText || cleanedText.length < 2) {
 cleanedText = text.trim();
+if (cleanedText.length > 30) {
+cleanedText = cleanedText.substring(0, 30);
+}
 }
 
 return cleanedText;
