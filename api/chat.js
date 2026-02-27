@@ -1,5 +1,7 @@
+api/chat.js:
+
 // api/chat.js
-var parser = require('./parser.js');
+var parser = require('./_utils/parser.js');
 
 module.exports = async (req, res) => {
 // 设置 CORS 头，以允许跨域请求
