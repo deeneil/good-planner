@@ -48,6 +48,22 @@ if (isUpdateRequest) {
 }
 
 return res.status(200).json({ result: JSON.stringify(tasks) });
+} catch (error) {
+console.error('解析错误:', error);
+return res.status(500).json({ error: '处理您的请求时出错', details: error.message });
+}
+};
+
+// 魔法解析函数 - 从文本中提取任务
+function parseTasksFromText(text) {
+const tasks = [];
+
+// 拆分不同的任务（按句号、逗号、分号或换行符分割）
+const sentences = text.split(/[。，,.;\n]+/).filter(s => s.trim().length > 0);
+
+for (const sentence of sentences) {
+// 如果句子太短，可能不是有效任务
+if (sentence.trim().length < 2) continue;
 // 提取时间和日期信息
 const { deadline, remainingText } = extractTimeInfo(sentence);
 
